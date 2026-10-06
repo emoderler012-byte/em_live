@@ -1,0 +1,75 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repo Checkout
+        uses: actions/checkout@v3
+
+      - name: Java 17 Kur
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Flutter Kur
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+
+      - name: Proje Taslağı Oluştur
+        run: |
+          flutter create . --org com.emlive.app
+          cat << 'EOF' > lib/main.dart
+          import 'dart:math';
+          import 'package:flutter/material.dart';
+          import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_audio_room.dart';
+
+          void main() { runApp(const MyApp()); }
+
+          class MyApp extends StatelessWidget {
+            const MyApp({Key? key}) : super(key: key);
+            @override
+            Widget build(BuildContext context) {
+              return const MaterialApp(home: LivePage());
+            }
+          }
+
+          class LivePage extends StatelessWidget {
+            const LivePage({Key? key}) : super(key: key);
+            @override
+            Widget build(BuildContext context) {
+              final String userID = Random().nextInt(10000).toString();
+              final String roomID = "room_1001";
+              return SafeArea(
+                child: ZegoUIKitPrebuiltLiveAudioRoom(
+                  appID: 807340324,
+                  appSign: '1ec000a3eb0cb20f30886aec97a204bdbe7f',
+                  userID: userID,
+                  userName: 'User_$userID',
+                  roomID: roomID,
+                  config: ZegoUIKitPrebuiltLiveAudioRoomConfig.host(),
+                ),
+              );
+            }
+          }
+          EOF
+
+      - name: Paketleri Getir ve APK Derle
+        run: |
+          flutter pub get
+          flutter build apk --debug
+
+      - name: APK Dosyasını Yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
